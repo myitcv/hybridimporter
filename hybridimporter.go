@@ -27,7 +27,7 @@ func New(ctxt *build.Context, fset *token.FileSet, path, dir string) (*srcimport
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to start list for %v in %v: %v", path, dir, err)
+		return nil, fmt.Errorf("failed to start list for %v in %v: %v\n%v", path, dir, err, string(out))
 	}
 
 	lookups := make(map[string]io.ReadCloser)

@@ -22,7 +22,24 @@ type pkgInfo struct {
 	Name       string
 }
 
+// New returns a go/types.ImporterFrom that uses installed package files if they
+// are non-Stale, dropping back to a src-based importer otherwise.
 func New(ctxt *build.Context, fset *token.FileSet, path, dir string) (*srcimporter.Importer, error) {
+	return newImpl(ctxt, fset, path, dir, false)
+}
+
+// NewInstaller returns a go/types.ImporterFrom that behaves identifically to
+// the ImporterFrom returned by New, except that it forks a go install of any
+// stale packages that are imported along the way (we don't care whether this
+// install fails or not). Notice too that we are not waiting _at all_ for the
+// install process to finish.... this could be problematic if the calling process
+// exits before the install finishes... let's deal with that when we have such
+// a use case.
+func NewInstaller(ctxt *build.Context, fset *token.FileSet, path, dir string) (*srcimporter.Importer, error) {
+	return newImpl(ctxt, fset, path, dir, true)
+}
+
+func newImpl(ctxt *build.Context, fset *token.FileSet, path, dir string, install bool) (*srcimporter.Importer, error) {
 	cmd := exec.Command("go", "list", "-deps", "-test", "-json", path)
 	cmd.Dir = dir
 
@@ -75,5 +92,5 @@ func New(ctxt *build.Context, fset *token.FileSet, path, dir string) (*srcimport
 		tpkgs[path] = p
 	}
 
-	return srcimporter.New(ctxt, fset, tpkgs), nil
+	return srcimporter.New(ctxt, fset, tpkgs, install), nil
 }

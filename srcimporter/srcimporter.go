@@ -27,7 +27,6 @@ type Importer struct {
 	fset     *token.FileSet
 	sizes    types.Sizes
 	packages map[string]*types.Package
-	install  bool
 }
 
 // NewImporter returns a new Importer for the given context, file set, and map
@@ -36,7 +35,7 @@ type Importer struct {
 // non-nil file system functions, they are used instead of the regular package
 // os functions. The file set is used to track position information of package
 // files; and imported packages are added to the packages map.
-func New(ctxt *build.Context, fset *token.FileSet, packages map[string]*types.Package, install bool) *Importer {
+func New(ctxt *build.Context, fset *token.FileSet, packages map[string]*types.Package) *Importer {
 	return &Importer{
 		ctxt:     ctxt,
 		fset:     fset,
@@ -145,29 +144,27 @@ func (p *Importer) ImportFrom(path, srcDir string, mode types.ImportMode) (*type
 	}
 
 	// fork an install if required
-	if p.install {
-		args := []string{"go", "install", bp.ImportPath}
-		if len(p.ctxt.BuildTags) > 0 {
-			args = append(args, "-tags", strings.Join(p.ctxt.BuildTags, ","))
-		}
-		if p.ctxt.InstallSuffix != "" {
-			args = append(args, "-installsuffix", p.ctxt.InstallSuffix)
-		}
-		if p.ctxt.Compiler != "" {
-			args = append(args, "-compiler", p.ctxt.Compiler)
-		}
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Env = append(os.Environ(),
-			"GOARCH="+p.ctxt.GOARCH,
-			"GOOS="+p.ctxt.GOOS,
-			"GOROOT="+p.ctxt.GOROOT,
-			"GOPATH="+p.ctxt.GOPATH,
-		)
-
-		go func() {
-			cmd.Run()
-		}()
+	args := []string{"go", "install", bp.ImportPath}
+	if len(p.ctxt.BuildTags) > 0 {
+		args = append(args, "-tags", strings.Join(p.ctxt.BuildTags, ","))
 	}
+	if p.ctxt.InstallSuffix != "" {
+		args = append(args, "-installsuffix", p.ctxt.InstallSuffix)
+	}
+	if p.ctxt.Compiler != "" {
+		args = append(args, "-compiler", p.ctxt.Compiler)
+	}
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Env = append(os.Environ(),
+		"GOARCH="+p.ctxt.GOARCH,
+		"GOOS="+p.ctxt.GOOS,
+		"GOROOT="+p.ctxt.GOROOT,
+		"GOPATH="+p.ctxt.GOPATH,
+	)
+
+	go func() {
+		cmd.Run()
+	}()
 
 	p.packages[bp.ImportPath] = pkg
 	return pkg, nil
